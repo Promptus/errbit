@@ -1,7 +1,7 @@
 namespace :errbit do
-
   desc "Add a demo app & errors to your database (for testing)"
   task :demo => :environment do
+    require 'fabrication'
 
     app = Fabricate(:app, :name => "Demo App #{Time.now.strftime("%N")}")
 
@@ -42,15 +42,16 @@ namespace :errbit do
 
     errors.each do |error_template|
       rand(34).times do
-
-        error_report = error_template.reverse_merge({
+        ErrorReport.new(error_template.reverse_merge({
+          :api_key => app.api_key,
           :error_class => "StandardError",
           :message => "Oops. Something went wrong!",
           :backtrace => random_backtrace,
           :request => {
-                        'component' => 'main',
-                        'action' => 'error'
-                      },
+            'component' => 'main',
+            'action' => 'error',
+            'url' => "http://example.com/post/#{[111, 222, 333].sample}",
+          },
           :server_environment => {'environment-name' => Rails.env.to_s},
           :notifier => {:name => "seeds.rb"},
           :app_user => {
@@ -59,9 +60,7 @@ namespace :errbit do
             :name => "John Smith",
             :url => "http://www.example.com/users/jsmith"
           }
-        })
-
-        app.report_error!(error_report)
+        })).generate_notice!
       end
     end
 
@@ -69,5 +68,4 @@ namespace :errbit do
     Fabricate(:notice, :err => Fabricate(:err, :problem => Fabricate(:problem, :app => app)))
     puts "=== Created demo app: '#{app.name}', with example errors."
   end
-
 end
